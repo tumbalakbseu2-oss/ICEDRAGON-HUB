@@ -10,6 +10,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/tumbalakbseu2-oss/ICE
 
 ## Supported Games
 
-| Game | PlaceId | Script Path | Direct Loadstring |
-| --- | --- | --- | --- |
-| Dragon Arena | `83694443310872` | `games/dragon_arena_empire_hub.lua` | `loadstring(game:HttpGet("https://raw.githubusercontent.com/tumbalakbseu2-oss/ICEDRAGON-HUB/main/games/dragon_arena_empire_hub.lua"))()` |
+| Game | PlaceId | GameId (Universe) | Script Path | Direct Loadstring |
+| --- | --- | --- | --- | --- |
+| Dragon Arena | `83694443310872` | `10771238997` | `games/dragon_arena_empire_hub.lua` | `loadstring(game:HttpGet("https://raw.githubusercontent.com/tumbalakbseu2-oss/ICEDRAGON-HUB/main/games/dragon_arena_empire_hub.lua"))()` |
+| Do Not Stop | `116779912472448` (+ sub-places) | `10772946647` | `games/do_not_stop.lua` | `loadstring(game:HttpGet("https://raw.githubusercontent.com/tumbalakbseu2-oss/ICEDRAGON-HUB/main/games/do_not_stop.lua"))()` |
