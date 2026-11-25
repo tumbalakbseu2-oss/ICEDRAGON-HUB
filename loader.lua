@@ -16,10 +16,21 @@ local GAMES_BY_PLACE_ID: { [number]: { Name: string, Path: string } } = {
         Name = "Dragon Arena",
         Path = "games/dragon_arena_empire_hub.lua",
     },
+    [116779912472448] = {
+        Name = "Do Not Stop",
+        Path = "games/do_not_stop.lua",
+    },
 }
 
 local GAMES_BY_GAME_ID: { [number]: { Name: string, Path: string } } = {
-    -- Example: [1234567890] = { Name = "Phighting", Path = "games/phighting.lua" },
+    [10771238997] = {
+        Name = "Dragon Arena",
+        Path = "games/dragon_arena_empire_hub.lua",
+    },
+    [10772946647] = {
+        Name = "Do Not Stop",
+        Path = "games/do_not_stop.lua",
+    },
 }
 
 local entry = GAMES_BY_PLACE_ID[game.PlaceId] or GAMES_BY_GAME_ID[game.GameId]
