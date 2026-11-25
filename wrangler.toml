@@ -2,6 +2,7 @@ name = "icedragon-hub"
 main = "worker.js"
 compatibility_date = "2025-01-01"
 workers_dev = true
+keep_vars = true
 
 [vars]
 VAMPAUTH_PROJECT_ID = "JUHQH1GGWXPPS4UU"
