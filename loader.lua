@@ -1,8 +1,11 @@
 --!strict
 -- ==============================================================================
--- ICEDRAGON HUB | MULTI-GAME UNIVERSAL LOADER + CLOUDFLARE VAMPAUTH GATE
+-- ICEDRAGON HUB | OPEN KEY-GATE LOADER -> VAMPAUTH OBFUSCATED HOSTED LOADERS
 -- Repository: https://github.com/tumbalakbseu2-oss/ICEDRAGON-HUB
--- Note: Zero AuthSecret in client code. Verification goes through your Worker.
+-- Architecture:
+--   1) Open Frost Key UI checks key status non-destructively via Cloudflare /preflight
+--      (avoids HWID mismatch and avoids Error 267 kick on wrong key)
+--   2) Hands script_key to your homemade-obfuscated VampAuth Hosted Loader
 -- ==============================================================================
 
 if not game:IsLoaded() then
@@ -14,33 +17,32 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 local HUB_CONFIG = {
-    Enabled = true, -- Set false only for local offline testing
-    WorkerCheckURL = "https://icedragon-hub.andika8899a.workers.dev/check",
+    Enabled = true,
+    WorkerPreflightURL = "https://icedragon-hub.andika8899a.workers.dev/preflight",
     GetKeyURL = "https://vampauth.com/JUHQH1GGWXPPS4UU/flow",
     DiscordURL = "https://discord.gg/R2CSxzeCU",
     KeyFileName = "icedragon_hub_key.txt",
-    RawBase = "https://raw.githubusercontent.com/tumbalakbseu2-oss/ICEDRAGON-HUB/main/",
 }
 
-local GAMES_BY_PLACE_ID: { [number]: { Name: string, Path: string } } = {
+local GAMES_BY_PLACE_ID: { [number]: { Name: string, LoaderUrl: string } } = {
     [83694443310872] = {
         Name = "Dragon Arena",
-        Path = "games/dragon_arena_empire_hub.lua",
+        LoaderUrl = "https://vampauth.com/v1/loaders/ac523cb4ce98eecf592c0888b7667654.lua",
     },
     [116779912472448] = {
         Name = "Do Not Stop",
-        Path = "games/do_not_stop.lua",
+        LoaderUrl = "https://vampauth.com/v1/loaders/8236c1f2b46b6895de8fb13f0a420059.lua",
     },
 }
 
-local GAMES_BY_GAME_ID: { [number]: { Name: string, Path: string } } = {
+local GAMES_BY_GAME_ID: { [number]: { Name: string, LoaderUrl: string } } = {
     [10771238997] = {
         Name = "Dragon Arena",
-        Path = "games/dragon_arena_empire_hub.lua",
+        LoaderUrl = "https://vampauth.com/v1/loaders/ac523cb4ce98eecf592c0888b7667654.lua",
     },
     [10772946647] = {
         Name = "Do Not Stop",
-        Path = "games/do_not_stop.lua",
+        LoaderUrl = "https://vampauth.com/v1/loaders/8236c1f2b46b6895de8fb13f0a420059.lua",
     },
 }
 
@@ -58,7 +60,7 @@ if not targetGame then
 end
 
 -- ------------------------------------------------------------------------------
--- 2. CLIPBOARD + SHA-256 HWID + WORKER CLIENT
+-- 2. CLIPBOARD + NON-HWID WORKER PREFLIGHT
 -- ------------------------------------------------------------------------------
 local function SafeSetClipboard(text: string)
     pcall(function()
@@ -77,109 +79,6 @@ local function SafeGetClipboard(): string
     return (ok and type(res) == "string") and res or ""
 end
 
-local SHA256Hex = (function()
-    local bnot = bit32.bnot
-    local band = bit32.band
-    local bor = bit32.bor
-    local bxor = bit32.bxor
-    local rshift = bit32.rshift
-    local rrotate = bit32.rrotate
-
-    local K256 = {
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
-    }
-
-    local function toHex32(words: { number }): string
-        local out = table.create(#words)
-        for i = 1, #words do
-            out[i] = string.format("%08x", band(words[i], 0xffffffff))
-        end
-        return table.concat(out)
-    end
-
-    return function(msg: string): string
-        local len = #msg
-        local padZero = (55 - len) % 64
-        local bitLen = len * 8
-        local hi = math.floor(bitLen / 0x100000000)
-        local lo = bitLen % 0x100000000
-        local padded = msg
-            .. "\128"
-            .. string.rep("\0", padZero)
-            .. string.char(
-                band(rshift(hi, 24), 0xff), band(rshift(hi, 16), 0xff), band(rshift(hi, 8), 0xff), band(hi, 0xff),
-                band(rshift(lo, 24), 0xff), band(rshift(lo, 16), 0xff), band(rshift(lo, 8), 0xff), band(lo, 0xff)
-            )
-
-        local h0, h1, h2, h3, h4, h5, h6, h7 =
-            0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-            0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
-        local w = table.create(64, 0)
-
-        for idx = 1, #padded, 64 do
-            for j = 1, 16 do
-                local o = idx + (j - 1) * 4
-                local b1, b2, b3, b4 = string.byte(padded, o, o + 3)
-                w[j] = (((b1 * 256 + b2) * 256 + b3) * 256 + b4)
-            end
-            for j = 17, 64 do
-                local v15 = w[j - 15]
-                local v2 = w[j - 2]
-                local s0 = bxor(rrotate(v15, 7), rrotate(v15, 18), rshift(v15, 3))
-                local s1 = bxor(rrotate(v2, 17), rrotate(v2, 19), rshift(v2, 10))
-                w[j] = (w[j - 16] + s0 + w[j - 7] + s1) % 0x100000000
-            end
-
-            local a, b, c, d, e, f, g, h = h0, h1, h2, h3, h4, h5, h6, h7
-            for j = 1, 64 do
-                local S1 = bxor(rrotate(e, 6), rrotate(e, 11), rrotate(e, 25))
-                local ch = bxor(band(e, f), band(bnot(e), g))
-                local temp1 = (h + S1 + ch + K256[j] + w[j]) % 0x100000000
-                local S0 = bxor(rrotate(a, 2), rrotate(a, 13), rrotate(a, 22))
-                local maj = bxor(band(a, b), band(a, c), band(b, c))
-                local temp2 = (S0 + maj) % 0x100000000
-
-                h = g
-                g = f
-                f = e
-                e = (d + temp1) % 0x100000000
-                d = c
-                c = b
-                b = a
-                a = (temp1 + temp2) % 0x100000000
-            end
-
-            h0 = (h0 + a) % 0x100000000
-            h1 = (h1 + b) % 0x100000000
-            h2 = (h2 + c) % 0x100000000
-            h3 = (h3 + d) % 0x100000000
-            h4 = (h4 + e) % 0x100000000
-            h5 = (h5 + f) % 0x100000000
-            h6 = (h6 + g) % 0x100000000
-            h7 = (h7 + h) % 0x100000000
-        end
-
-        return toHex32({ h0, h1, h2, h3, h4, h5, h6, h7 })
-    end
-end)()
-
-local function ResolveHWIDHash(): string
-    local ok, cid = pcall(function()
-        return game:GetService("RbxAnalyticsService"):GetClientId()
-    end)
-    local rawId = (ok and type(cid) == "string" and #cid > 0)
-        and cid
-        or ("roblox-uid-" .. tostring(LocalPlayer and LocalPlayer.UserId or 0))
-    return SHA256Hex(rawId)
-end
-
 local function ResolveHttpRequest()
     local genv = (typeof(getgenv) == "function" and getgenv()) or nil
     local fn = (genv and genv.request) or (typeof(request) == "function" and request)
@@ -188,35 +87,31 @@ local function ResolveHttpRequest()
     return fn
 end
 
-local function CheckKeyViaWorker(rawKey: string, hwid: string): (boolean, any)
+local function PreflightKeyViaWorker(rawKey: string): (boolean, any)
     local key = tostring(rawKey or ""):gsub("^%s+", ""):gsub("%s+$", "")
-    if #key == 0 or #key > 128 then
-        return false, "invalid_request"
-    end
-    if HUB_CONFIG.WorkerCheckURL:find("YOUR%-WORKER%-SUBDOMAIN") then
-        return false, "worker_not_configured"
+    if #key < 3 or #key > 64 then
+        return false, "invalid_key"
     end
 
     local reqFn = ResolveHttpRequest()
     if type(reqFn) ~= "function" then
-        return false, "executor_unsupported"
+        -- Executor lacks custom request(); let VampAuth bootstrap verify directly
+        return true, { preflight_skipped = true }
     end
 
     local okReq, res = pcall(reqFn, {
-        Url = HUB_CONFIG.WorkerCheckURL,
+        Url = HUB_CONFIG.WorkerPreflightURL,
         Method = "POST",
         Headers = {
             ["Content-Type"] = "application/json",
             ["Accept"] = "application/json",
         },
-        Body = HttpService:JSONEncode({
-            key = key,
-            hwid = hwid,
-        }),
+        Body = HttpService:JSONEncode({ key = key }),
     })
 
     if not okReq or type(res) ~= "table" then
-        return false, "connection_failed"
+        -- Network fallback: allow direct VampAuth handoff if Worker unreachable
+        return true, { preflight_skipped = true }
     end
 
     local status = tonumber(res.StatusCode or res.status_code) or 0
@@ -226,10 +121,13 @@ local function CheckKeyViaWorker(rawKey: string, hwid: string): (boolean, any)
     end)
 
     if not okDec or type(data) ~= "table" then
+        if status == 404 or status >= 500 then
+            return true, { preflight_skipped = true }
+        end
         return false, "HTTP_" .. tostring(status)
     end
 
-    if status == 200 and data.valid == true and data.status == "valid" then
+    if status == 200 and data.valid == true then
         return true, data
     end
 
@@ -238,37 +136,29 @@ end
 
 local function FormatKeyError(errCode: any): string
     local code = string.lower(tostring(errCode or "invalid_key"))
-    if code:find("worker_not_configured") then
-        return "Worker URL belum diisi di loader.lua!"
-    elseif code:find("server_misconfigured") then
-        return "Secret VAMPAUTH_AUTH_SECRET belum diset di Cloudflare Worker!"
-    elseif code:find("invalid_key") or code:find("not_found") then
+    if code:find("invalid_key") or code:find("not_found") then
         return "Key salah atau tidak ditemukan. Coba Get Key ulang."
     elseif code:find("key_expired") or code:find("expired") then
         return "Key sudah expired! Klik Get Key untuk perpanjang."
-    elseif code:find("hwid_mismatch") or code:find("mismatch") then
-        return "Key sudah terikat ke device lain (HWID Mismatch)."
     elseif code:find("key_revoked") or code:find("revoked") then
         return "Key diblokir / dicabut oleh owner."
     elseif code:find("blacklisted") or code:find("banned") then
-        return "Device masuk blacklist project ini."
+        return "Key / device masuk blacklist project ini."
     elseif code:find("rate_limited") or code:find("429") then
         return "Terlalu banyak percobaan. Tunggu ~60 detik."
-    elseif code:find("connection_failed") or code:find("service_unavailable") then
-        return "Gagal terhubung ke Cloudflare Worker / VampAuth."
     end
-    return "Verifikasi gagal: " .. tostring(errCode)
+    return "Key ditolak: " .. tostring(errCode)
 end
 
 local function GetSavedKey(): string?
     local genv = (typeof(getgenv) == "function" and getgenv()) or nil
     local envKey = (genv and genv.script_key) or rawget(_G, "script_key")
-    if type(envKey) == "string" and #envKey > 3 and envKey ~= "PASTE-YOUR-KEY-HERE" then
+    if type(envKey) == "string" and #envKey >= 3 and envKey ~= "PASTE-YOUR-KEY-HERE" then
         return (envKey:gsub("^%s+", ""):gsub("%s+$", ""))
     end
     if typeof(isfile) == "function" and typeof(readfile) == "function" and isfile(HUB_CONFIG.KeyFileName) then
         local ok, content = pcall(readfile, HUB_CONFIG.KeyFileName)
-        if ok and type(content) == "string" and #content > 3 then
+        if ok and type(content) == "string" and #content >= 3 then
             return (content:gsub("^%s+", ""):gsub("%s+$", ""))
         end
     end
@@ -288,24 +178,31 @@ end
 -- ------------------------------------------------------------------------------
 -- 3. FROST KEY VERIFICATION UI GATE
 -- ------------------------------------------------------------------------------
+local verifiedKey: string? = nil
+
 local function RunKeyGate(): boolean
     if not HUB_CONFIG.Enabled then
+        local saved = GetSavedKey()
+        verifiedKey = saved or ""
         return true
     end
 
-    local hwid = ResolveHWIDHash()
     local savedKey = GetSavedKey()
-    local initialNotice = "Enter your VampAuth key to unlock " .. targetGame.Name .. ":"
+    local initialNotice = "Enter your VampAuth key to launch " .. targetGame.Name .. ":"
     local initialColor = Color3.fromRGB(180, 215, 240)
 
     if savedKey then
-        local ok, res = CheckKeyViaWorker(savedKey, hwid)
+        local ok, res = PreflightKeyViaWorker(savedKey)
         if ok then
-            print("[ICEDRAGON HUB] Saved key valid! Loading " .. targetGame.Name .. "...")
+            verifiedKey = savedKey
+            print("[ICEDRAGON HUB] Key ready! Passing to VampAuth loader for " .. targetGame.Name .. "...")
             return true
         end
         initialNotice = "Saved key invalid: " .. FormatKeyError(res)
         initialColor = Color3.fromRGB(255, 130, 130)
+        if typeof(delfile) == "function" and typeof(isfile) == "function" and isfile(HUB_CONFIG.KeyFileName) then
+            pcall(delfile, HUB_CONFIG.KeyFileName)
+        end
     end
 
     local uiParent: Instance? = nil
@@ -395,7 +292,7 @@ local function RunKeyGate(): boolean
     SubtitleLbl.Position = UDim2.new(0, 20, 0, 44)
     SubtitleLbl.BackgroundTransparency = 1
     SubtitleLbl.Font = Enum.Font.GothamMedium
-    SubtitleLbl.Text = "Target: " .. targetGame.Name .. " • VampAuth Worker"
+    SubtitleLbl.Text = "Game: " .. targetGame.Name .. " • VampAuth Protected"
     SubtitleLbl.TextColor3 = Color3.fromRGB(0, 210, 245)
     SubtitleLbl.TextSize = 12
     SubtitleLbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -446,7 +343,7 @@ local function RunKeyGate(): boolean
     KeyTextBox.Font = Enum.Font.Code
     KeyTextBox.PlaceholderText = "Paste your VampAuth key here..."
     KeyTextBox.PlaceholderColor3 = Color3.fromRGB(110, 155, 185)
-    KeyTextBox.Text = savedKey or ""
+    KeyTextBox.Text = ""
     KeyTextBox.TextColor3 = Color3.fromRGB(240, 252, 255)
     KeyTextBox.TextSize = 13
     KeyTextBox.TextXAlignment = Enum.TextXAlignment.Left
@@ -550,16 +447,16 @@ local function RunKeyGate(): boolean
     local function AttemptVerify()
         if busy or finished then return end
         local inputKey = (KeyTextBox.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
-        if #inputKey < 4 then
+        if #inputKey < 3 then
             StatusLbl.Text = "Please enter a valid license key first!"
             StatusLbl.TextColor3 = Color3.fromRGB(255, 185, 100)
             return
         end
 
         busy = true
-        SubmitBtn.Text = "Verifying via Worker..."
+        SubmitBtn.Text = "Checking key..."
         SubmitBtn.BackgroundColor3 = Color3.fromRGB(60, 130, 160)
-        StatusLbl.Text = "Checking license with IceDragon Auth Worker..."
+        StatusLbl.Text = "Verifying key status..."
         StatusLbl.TextColor3 = Color3.fromRGB(160, 230, 255)
 
         task.spawn(function()
@@ -571,26 +468,28 @@ local function RunKeyGate(): boolean
                     busy = false
                     SubmitBtn.Text = "Verify & Launch " .. targetGame.Name
                     SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 185, 230)
-                    StatusLbl.Text = "Request timed out! Check internet / Worker URL."
+                    StatusLbl.Text = "Preflight timed out! Check your connection."
                     StatusLbl.TextColor3 = Color3.fromRGB(255, 120, 120)
                 end
             end)
 
             okCall, valid, res = pcall(function()
-                return CheckKeyViaWorker(inputKey, hwid)
+                return PreflightKeyViaWorker(inputKey)
             end)
             settled = true
             if finished then return end
 
             if okCall and valid then
-                StatusLbl.Text = "License valid! Loading " .. targetGame.Name .. "..."
+                verifiedKey = inputKey
+                local skipped = type(res) == "table" and res.preflight_skipped == true
+                StatusLbl.Text = skipped
+                    and ("Launching VampAuth loader for " .. targetGame.Name .. "...")
+                    or ("License valid! Launching " .. targetGame.Name .. "...")
                 StatusLbl.TextColor3 = Color3.fromRGB(115, 255, 180)
-                if typeof(writefile) == "function" then
+                if not skipped and typeof(writefile) == "function" then
                     pcall(writefile, HUB_CONFIG.KeyFileName, inputKey)
                 end
-                local genv = (typeof(getgenv) == "function" and getgenv()) or nil
-                if genv then genv.script_key = inputKey else _G.script_key = inputKey end
-                task.wait(0.35)
+                task.wait(0.25)
                 CompleteGate(true)
             else
                 busy = false
@@ -617,26 +516,37 @@ if not RunKeyGate() then
 end
 
 -- ------------------------------------------------------------------------------
--- 4. FETCH & EXECUTE VERIFIED GAME HUB
+-- 4. HANDOFF TO OBFUSCATED VAMPAUTH HOSTED LOADER
 -- ------------------------------------------------------------------------------
-local url = HUB_CONFIG.RawBase .. targetGame.Path
-local okGet, source = pcall(function()
-    return game:HttpGet(url)
+local activeKey = verifiedKey or ""
+local genv = (typeof(getgenv) == "function" and getgenv()) or nil
+if genv then
+    genv.script_key = activeKey
+end
+_G.script_key = activeKey
+script_key = activeKey
+
+local okGet, loaderSource = pcall(function()
+    return game:HttpGet(targetGame.LoaderUrl)
 end)
 
-if not okGet or type(source) ~= "string" or #source == 0 then
-    warn("[ICEDRAGON HUB] Failed to fetch " .. targetGame.Name .. " script from: " .. url)
+if not okGet or type(loaderSource) ~= "string" or #loaderSource == 0 then
+    warn("[ICEDRAGON HUB] Failed to fetch VampAuth loader for " .. targetGame.Name)
     return
 end
 
-local fn, compileErr = loadstring(source, targetGame.Name)
+local fn, compileErr = loadstring(loaderSource, targetGame.Name .. "_VampAuth")
 if not fn then
-    warn("[ICEDRAGON HUB] Compile error in " .. targetGame.Name .. ": " .. tostring(compileErr))
+    warn("[ICEDRAGON HUB] Compile error in VampAuth loader: " .. tostring(compileErr))
     return
 end
 
-print("[ICEDRAGON HUB] Loading " .. targetGame.Name .. "...")
+print("[ICEDRAGON HUB] Executing VampAuth obfuscated hub for " .. targetGame.Name .. "...")
 local okRun, runErr = xpcall(fn, debug.traceback)
-if not okRun then
+if okRun then
+    if #activeKey >= 3 and typeof(writefile) == "function" then
+        pcall(writefile, HUB_CONFIG.KeyFileName, activeKey)
+    end
+else
     warn("[ICEDRAGON HUB] Runtime error in " .. targetGame.Name .. ": " .. tostring(runErr))
 end

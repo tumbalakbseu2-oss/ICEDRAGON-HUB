@@ -1,8 +1,8 @@
 # ICEDRAGON HUB
 
-Multi-game Roblox script hub managed under `tumbalakbseu2-oss/ICEDRAGON-HUB`, protected by VampAuth via Cloudflare Worker (`icedragon-hub.andika8899a.workers.dev`).
+Multi-game Roblox hub (`tumbalakbseu2-oss/ICEDRAGON-HUB`) with an open Frost Key UI loader (`loader.lua`), non-HWID Cloudflare Worker key preflight (`icedragon-hub.andika8899a.workers.dev`), and homemade-obfuscated payloads served directly from VampAuth.
 
-## Universal Loader (with Frost Key UI)
+## Universal Loader
 
 ```lua
 loadstring(game:HttpGet("https://raw.githubusercontent.com/tumbalakbseu2-oss/ICEDRAGON-HUB/main/loader.lua"))()
@@ -13,7 +13,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/tumbalakbseu2-oss/ICE
 
 ## Supported Games
 
-| Game | PlaceId | GameId (Universe) | Script Path |
+| Game | PlaceId | GameId (Universe) | Delivery |
 | --- | --- | --- | --- |
-| Dragon Arena | `83694443310872` | `10771238997` | `games/dragon_arena_empire_hub.lua` |
-| Do Not Stop | `116779912472448` (+ sub-places) | `10772946647` | `games/do_not_stop.lua` |
+| Dragon Arena | `83694443310872` | `10771238997` | VampAuth Hosted Loader |
+| Do Not Stop | `116779912472448` (+ sub-places) | `10772946647` | VampAuth Hosted Loader |

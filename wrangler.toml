@@ -6,6 +6,8 @@ keep_vars = true
 
 [vars]
 VAMPAUTH_PROJECT_ID = "JUHQH1GGWXPPS4UU"
+VAMPAUTH_PROJECT_UUID = "f034de69-478c-431b-a78d-1f64b5f77145"
 
-# Set the secret securely in Cloudflare (do NOT commit it here):
-#   npx wrangler secret put VAMPAUTH_AUTH_SECRET
+# Secrets configured in Cloudflare Dashboard / Wrangler (NEVER commit):
+#   VAMPAUTH_MGMT_TOKEN   (va_api_... token for /preflight non-HWID key lookup)
+#   VAMPAUTH_AUTH_SECRET  (48-char Auth Secret for /check)
