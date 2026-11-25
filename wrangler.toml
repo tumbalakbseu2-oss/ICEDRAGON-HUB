@@ -1,0 +1,10 @@
+name = "icedragon-hub"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+[vars]
+VAMPAUTH_PROJECT_ID = "JUHQH1GGWXPPS4UU"
+
+# Set the secret securely in Cloudflare (do NOT commit it here):
+#   npx wrangler secret put VAMPAUTH_AUTH_SECRET
