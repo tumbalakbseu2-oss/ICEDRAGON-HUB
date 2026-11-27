@@ -17,3 +17,4 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/tumbalakbseu2-oss/ICE
 | --- | --- | --- | --- |
 | Dragon Arena | `83694443310872` | `10771238997` | VampAuth Hosted Loader |
 | Do Not Stop | `116779912472448` (+ sub-places) | `10772946647` | VampAuth Hosted Loader |
+| Symphony Orchestra Simulator | `120009540834199` | `10772237634` | VampAuth Hosted Loader |

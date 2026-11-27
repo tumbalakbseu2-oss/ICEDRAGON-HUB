@@ -33,6 +33,10 @@ local GAMES_BY_PLACE_ID: { [number]: { Name: string, LoaderUrl: string } } = {
         Name = "Do Not Stop",
         LoaderUrl = "https://vampauth.com/v1/loaders/8236c1f2b46b6895de8fb13f0a420059.lua",
     },
+    [120009540834199] = {
+        Name = "Symphony Orchestra Simulator",
+        LoaderUrl = "https://vampauth.com/v1/loaders/feaa758a3ca9274bdd4f985747157296.lua",
+    },
 }
 
 local GAMES_BY_GAME_ID: { [number]: { Name: string, LoaderUrl: string } } = {
@@ -43,6 +47,10 @@ local GAMES_BY_GAME_ID: { [number]: { Name: string, LoaderUrl: string } } = {
     [10772946647] = {
         Name = "Do Not Stop",
         LoaderUrl = "https://vampauth.com/v1/loaders/8236c1f2b46b6895de8fb13f0a420059.lua",
+    },
+    [10772237634] = {
+        Name = "Symphony Orchestra Simulator",
+        LoaderUrl = "https://vampauth.com/v1/loaders/feaa758a3ca9274bdd4f985747157296.lua",
     },
 }
 
