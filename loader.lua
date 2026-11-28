@@ -18,7 +18,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local HUB_CONFIG = {
     Enabled = true,
-    WorkerPreflightURL = "https://icedragon-hub.andika8899a.workers.dev/preflight",
+    WorkerPreflightURL = "", -- Optional: add custom-domain Worker /preflight URL (*.workers.dev blocked by some ISPs)
     GetKeyURL = "https://vampauth.com/JUHQH1GGWXPPS4UU/flow",
     DiscordURL = "https://discord.gg/R2CSxzeCU",
     KeyFileName = "icedragon_hub_key.txt",
@@ -99,6 +99,9 @@ local function PreflightKeyViaWorker(rawKey: string): (boolean, any)
     local key = tostring(rawKey or ""):gsub("^%s+", ""):gsub("%s+$", "")
     if #key < 3 or #key > 64 then
         return false, "invalid_key"
+    end
+    if type(HUB_CONFIG.WorkerPreflightURL) ~= "string" or #HUB_CONFIG.WorkerPreflightURL == 0 then
+        return true, { preflight_skipped = true }
     end
 
     local reqFn = ResolveHttpRequest()
