@@ -129,10 +129,8 @@ local function PreflightKeyViaWorker(rawKey: string): (boolean, any)
     end)
 
     if not okDec or type(data) ~= "table" then
-        if status == 404 or status >= 500 then
-            return true, { preflight_skipped = true }
-        end
-        return false, "HTTP_" .. tostring(status)
+        -- Any non-JSON response (HTTP_0, ISP block HTML, 5xx) falls back to VampAuth direct verify
+        return true, { preflight_skipped = true }
     end
 
     if status == 200 and data.valid == true then
